@@ -1,0 +1,117 @@
+---
+title: "TidyTuesday Tour de France"
+author: "Sabari Shrestha"
+date: "4/22/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(dplyr)
+library(ggplot2)
+library(lubridate)
+library(ggrepel)
+```
+
+## R Markdown
+
+
+```{r }
+tourdf<-read.csv("https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-04-07/tdf_winners.csv")
+head(tourdf)
+str(tourdf)
+```
+
+## Including Plots
+####Formatting the Date
+
+```{r pressure, echo=FALSE}
+
+tourdf$start_date <- as.Date(tourdf$start_date)
+tourdf$born<- as.Date(tourdf$born)
+tourdf$died<-as.Date(tourdf$died)
+```
+
+
+```{r,warning=FALSE}
+tourdf<-tourdf %>% mutate(BMI=round(weight/height^2,2), Speed=distance/time_overall) %>% 
+                  mutate( Speed_grp = case_when(
+                              between(Speed, 23,30) ~ "23-30",
+                              between(Speed, 31,35)  ~ "31-35",
+                              between(Speed, 36,40) ~ "36-40",
+                              Speed > 40  ~ ">40"))
+
+
+
+#Which country has the highest win
+tourdf %>% group_by(nationality) %>% summarise(Win=n()) %>% arrange(desc(Win))
+
+
+#Top Atheletes
+athelete<-tourdf %>% group_by(winner_name, nationality, BMI) %>%summarise(count= n()) %>%
+  arrange(desc(count)) 
+
+#How the average speed has spredout based on each country
+(countries<-tourdf %>% ggplot(aes(nationality,time_overall,fill=nationality)) + 
+    geom_boxplot() +
+    coord_flip()) +
+    xlab("Country") +
+    ylab("Overall time of Completion") +
+    ggtitle("How the Average Speed per hour has spreadout based on Country?") +
+    theme(legend.position = "none")
+
+
+tourdf %>% 
+            ggplot(aes(start_date,time_overall,color=nationality)) +
+            geom_point()+
+            theme(legend.position = "none") +
+  geom_label_repel(data = tourdf%>% sample_n(20), 
+                   aes(label = nationality), size = 3,  
+                   nudge_y = 5, na.rm = TRUE,
+                   segment.alpha = 0.2)
+
+ 
+
+tourdf %>% 
+   ggplot(aes(start_date,distance, color=Speed_grp)) +
+   geom_point() +
+  geom_label_repel(data = tourdf %>% sample_n(15), 
+                   aes(label = winner_name), size = 2.3,  
+                   nudge_y = -9, na.rm = TRUE,
+                   segment.alpha = 0.2)
+
+tourdf %>% 
+  ggplot(aes(start_date, Speed)) +
+  geom_point() 
+
+         
+ 
+tourdf %>% 
+   ggplot(aes(distance, Speed,color=start_date)) +
+   geom_point() +
+   geom_smooth(method=lm)
+
+tourdf %>% 
+  ggplot(aes(start_date, BMI,color=winner_name)) +
+  geom_point() +
+  geom_label_repel(data = tourdf %>% sample_n(20), 
+                   aes(label = winner_name), size = 3.0,  
+                   nudge_y = 4, na.rm = TRUE,
+                   segment.alpha = 0.2) +
+  theme(legend.position ="none")
+
+  
+ tourlm<- lm(distance~time_overall+height+weight+age+Speed+BMI,data=tourdf)
+ summary(tourlm)
+ 
+ 
+ ##Time Margin: How the runner-up time margin has changed
+ 
+ tourdf %>% 
+   ggplot(aes(start_date,time_overall, size=time_margin)) +
+   geom_point() 
+ 
+
+ 
+ 
+```
+
